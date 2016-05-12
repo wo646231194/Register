@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title>Hello MUI</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1, user-scalable=no">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+		<link rel="stylesheet" href="css/mui.min.css">
+		<style type="text/css">
+		    .main-bg-gray{
+		    	background-color: #555555;
+		    }
+			#list {
+				/*避免导航边框和列表背景边框重叠，看起来像两条边框似得；*/
+				margin-top: -1px;
+			}			
+	        .mui-content-padded {
+					margin-top: 25px;
+			}
+	    	.main-bottom{
+	    		position: fixed;
+				bottom: 0px;
+				left: 0px;
+				text-align: center;
+				width: 100%;
+				padding: 0px;
+				margin: 0px;
+	    	}
+	    	.main-text-center{
+	    		text-align: center;
+	    	}
+	    	.main-blue-block{
+	    		width:100%;
+	    		height: auto;
+	    		color: #F9F9F9;
+	    		background-color: #00CC99;
+	    		padding: 10px;
+	    	}
+	    	.main-active{
+	    		color: #00CC99;
+	    	}
+	    	.text-h1{
+	    		font-size: 32px;
+	    		padding: 5px;
+	    	}
+	    	.text-h2{
+	    		font-size: 20px;
+	    		padding: 5px;
+	    	}
+		</style>
+		<script src="js/echarts.common.min.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/macarons.js" type="text/javascript" charset="utf-8"></script>
+	</head>
+
+	<body>
+		<div class="mui-content ">
+			<div class="mui-row main-blue-block">
+				<div class="main-text-center">
+					<h3 id="h-datetime">time</h3>
+					<h3 id="h-sumtime" style="padding: 5px;">0:0:0</h3>
+				</div>
+			</div>
+			<div class="mui-content-padded">
+				<div id="h-charts1" class="mui-col-xs-12" style="height: 400px;">
+					
+				</div>
+				<div id="h-charts2" class="mui-col-xs-12">
+				    
+				</div>
+			</div>
+			<div id="h-todayshow" class="mui-content-padded main-text-center">
+				<!--<h1>test</h1>
+				<h1>test</h1>
+				<h1>test</h1>
+				<h1>test</h1>
+				<h1>test</h1>
+				<h1>test</h1>
+				<h1>test</h1>
+				<h1>test</h1>
+				<h1>test</h1>
+				<h1>test</h1>
+				<h1>test</h1>-->
+			</div>
+			
+			<div class="mui-row" id="main-margin"></div>
+			<div class="main-bottom" id="main-footer">
+				<ul class="mui-table-view mui-grid-view mui-grid-9" style="border-top: 1px solid #CCCCCC;">
+		            <li class="mui-table-view-cell mui-media mui-col-xs-3" style="padding: 0px;">
+		            	<a id="main" style="padding: 5px;" href="main.html">
+		                    <span class="mui-icon mui-icon-flag "></span>
+		                    <div class="mui-media-body">签到</div></a></li>
+		            <li class="mui-table-view-cell mui-media mui-col-xs-3 " style="padding: 0px;">
+		            	<a id="week" style="padding: 5px;" href="#">
+		                    <span class="mui-icon mui-icon-plus main-active"></span>
+		                    <div class="mui-media-body" style="color: #00CC99;">周统计</div></a></li>
+		            <li class="mui-table-view-cell mui-media mui-col-xs-3 " style="padding: 0px;">
+		            	<a id="month" style="padding: 5px;" href="month.html">
+		                    <span class="mui-icon mui-icon-bars"></span>
+		                    <div class="mui-media-body">月统计</div></a></li>
+		            <li class="mui-table-view-cell mui-media mui-col-xs-3 " style="padding: 0px;">
+		            	<a id="search" style="padding: 5px;" href="search.html">
+		                    <span class="mui-icon mui-icon-search"></span>
+		                    <div class="mui-media-body">数据查询</div></a></li>
+		        </ul>
+			</div>
+		</div>
+		<script src="js/mui.min.js"></script>
+		<script>
+		    
+			var aniShow = "pop-in";
+			 //只有ios支持的功能需要在Android平台隐藏；
+			if (mui.os.android) {
+				var list = document.querySelectorAll('.ios-only');
+				if (list) {
+					for (var i = 0; i < list.length; i++) {
+						list[i].style.display = 'none';
+					}
+				}
+				//Android平台暂时使用slide-in-right动画
+				if(parseFloat(mui.os.version)<4.4){
+					aniShow = "slide-in-right";
+				}
+			}
+			//初始化，并预加载webview模式的选项卡			
+			function preload () {
+				mui.preload({
+					url:'examples/tab-webview-main.html',
+					styles: {
+						popGesture: 'hide'
+					}
+				});
+				mui.preload({
+					url:"examples/pullrefresh_main.html",
+					styles:{
+						popGesture:'hide'
+					}
+				});
+			}
+			var templates = {};
+			var getTemplate = function(name, header, content) {
+				var template = templates[name];
+				if (!template) {
+					//预加载共用父模板；
+					var headerWebview = mui.preload({
+						url: header,
+						id: name + "-main",
+						styles: {
+							popGesture: "hide",
+						},
+						extras: {
+							mType: 'main'
+						}
+					});
+					//预加载共用子webview
+					var subWebview = mui.preload({
+						url: !content ? "" : content,
+						id: name + "-sub",
+						styles: {
+							top: '45px',
+							bottom: '0px',
+						},
+						extras: {
+							mType: 'sub'
+						}
+					});
+					subWebview.addEventListener('loaded', function() {
+						setTimeout(function() {
+							subWebview.show();
+						}, 50);
+					});
+					subWebview.hide();
+					headerWebview.append(subWebview);
+					//iOS平台支持侧滑关闭，父窗体侧滑隐藏后，同时需要隐藏子窗体；
+					if (mui.os.ios) { //5+父窗体隐藏，子窗体还可以看到？不符合逻辑吧？
+						headerWebview.addEventListener('hide', function() {
+							subWebview.hide("none");
+						});
+					}
+					templates[name] = template = {
+						name: name,
+						header: headerWebview,
+						content: subWebview,
+					};
+				}
+				return template;
+			};
+			var initTemplates = function() {
+				getTemplate('default', 'view/template.html');
+			};
+			mui.plusReady(function() {
+				//读取本地存储，检查是否为首次启动
+				var showGuide = plus.storage.getItem("lauchFlag");
+				if(showGuide){
+					//有值，说明已经显示过了，无需显示；
+					//关闭splash页面；
+					plus.navigator.closeSplashscreen();
+					plus.navigator.setFullscreen(false);
+					//初始化模板
+					initTemplates(); 
+					//预加载
+					preload();
+				}else{
+					//显示启动导航
+					mui.openWindow({
+						id:'guide',
+						url:'view/guide.html',
+						show:{
+							aniShow:'none'
+						},
+						waiting:{
+							autoShow:false
+						}
+					});
+					//延迟的原因：优先打开启动导航页面，避免资源争夺
+					setTimeout(function () {
+						//初始化模板
+						initTemplates(); 
+						//预加载
+						preload();
+					},200);
+				}
+				
+				function GetWeekDate(time){
+				    var now = new Date(time); //当前日期   
+				    this.nowDayOfWeek = now.getDay(); //今天本周的第几天  
+				    this.nowYear = now.getYear(); //当前年   
+				    this.nowMonth = now.getMonth(); //月   
+				    this.nowDay = now.getDate(); //日   
+				    this.beginHour="00:00:00";  
+				    this.endHour="23:59:59";  
+				  
+				    this.nowYear += (this.nowYear < 2000) ? 1900 : 0; //  
+				    this.nowDayOfWeek = this.nowDayOfWeek==0?7:this.nowDayOfWeek; // 如果是周日，就变成周七  
+				}
+				GetWeekDate.prototype.getWeekStartDate = function(){
+					var weekStartDate = new Date(this.nowYear, this.nowMonth, this.nowDay - this.nowDayOfWeek+1);  
+					return weekStartDate.getDate();
+				}
+				GetWeekDate.prototype.getWeekEndDate = function(){
+					var weekEndDate = new Date(this.nowYear, this.nowMonth, this.nowDay + (6 - this.nowDayOfWeek+1));   
+					return weekEndDate.getDate();
+				}
+				GetWeekDate.prototype.getWeekDate = function(){
+					var week = [];
+					for(var i=0;i<7;i++){
+						var tmpdate = new Date(this.nowYear, this.nowMonth, this.nowDay + (i - this.nowDayOfWeek+1));
+//						alert(tmpdate.toLocaleDateString());
+						week.push(tmpdate.toLocaleDateString());
+					}
+					return week;
+				}
+				GetWeekDate.prototype.sumTime = function(targetdate){
+					var n = 0;
+					var keyNames=[];
+					var numKeys=plus.storage.getLength();
+					for(var i=0; i<numKeys; i++) {
+						var tmpday = new Date();
+						tmpday.setTime(parseInt(plus.storage.key(i)));
+						var tmpdate = tmpday.toLocaleDateString();
+						if(targetdate == tmpdate){
+							keyNames[n++] = parseInt(plus.storage.key(i));
+						}
+					}
+					keyNames = keyNames.sort();
+					var sum = 0;
+					var n = (keyNames.length-keyNames.length%2);
+					for(var i=0;i<n;i+=2){
+						var diff = keyNames[i+1] - keyNames[i];
+						sum += diff;
+					}
+					var hour = Math.floor(sum/(3600*1000));
+					var leave1= sum%(3600*1000);
+					var minite = Math.floor(leave1/(60*1000));
+					var leave2=leave1%(60*1000);
+					var second=Math.floor(leave2/(1000));
+					return hour+minite/60;
+				}
+				
+				//----------------------加载首页视图---------------------------
+				var today = new Date();
+				var timeofday = [0,0,0,0,0,0,0];
+//				var todaydate = today.toLocaleDateString();
+				var todayobj = new GetWeekDate(today);
+				var weekday = todayobj.getWeekDate();
+//				mui.alert(weekday.length);
+				
+				var keyNames=[];
+				var state = 1;
+				var numKeys=plus.storage.getLength();
+				var n = 0;
+				for(var i=0; i<numKeys; i++) {
+					var tmpday = new Date();
+					tmpday.setTime(parseInt(plus.storage.key(i)));
+					var tmpdate = tmpday.toLocaleDateString();
+					if(weekday.indexOf(tmpdate)>-1){
+						keyNames[n++] = parseInt(plus.storage.key(i));
+					}
+				}
+				keyNames = keyNames.sort();
+				var sum = 0;
+				var n = (keyNames.length-keyNames.length%2);
+				for(var i=0;i<n;i+=2){
+					var diff = keyNames[i+1] - keyNames[i];
+					sum += diff;
+				}
+				var hour = Math.floor(sum/(3600*1000));
+				var leave1= sum%(3600*1000);
+				var minite = Math.floor(leave1/(60*1000));
+				var leave2=leave1%(60*1000);
+				var second=Math.floor(leave2/(1000));
+				mui("#h-sumtime")[0].innerHTML = '<span class = "mui-icon mui-icon-plusempty"></span>'+ hour +':'+ minite +':'+ second;
+				
+				//--------------------------------显示图标----------------------------------
+				for(var i=0;i<weekday.length;i++){
+//					mui.alert(weekday[i]);
+//					mui.alert(todayobj.sumTime(weekday[i]));
+					timeofday[i] = todayobj.sumTime(weekday[i]);
+//					mui.alert(i.toString());
+//					mui.alert(timeofday[i].toString());
+//					timeofday[i].toString();
+				}
+				// 基于准备好的dom，初始化echarts实例
+		        var myChart = echarts.init(document.getElementById('h-charts1'),'macarons');
+		        // 指定图表的配置项和数据
+		        var option = {
+		            title: {
+		                text: '每天工作时间'
+		            },
+		            tooltip: {},
+		            legend: {
+		                data:['时间:小时']
+		            },
+		            xAxis: {
+		                data: ["周一","周二","周三","周四","周五","周六","周日"]
+		            },
+		            yAxis: {},
+		            series: [{
+		                name: '时间:小时',
+		                type: 'bar',
+		                data: timeofday
+		            }],
+		            animationDuration:100
+		        };
+		        // 使用刚指定的配置项和数据显示图表。
+		        myChart.setOption(option);
+				//-----------------------显示时间----------------------
+//				keyNames = keyNames.reverse();
+//				var n = 0;
+//				keyNames.forEach(function(item){
+//					var tmpday = new Date();
+//					tmpday.setTime(item);
+//					keyNames[n++] = showTime(tmpday);
+//				});
+//				var timehtml = '';
+//				spanheadsucess = '<h1 class=" mui-badge-success text-h2">'
+//				spanheaddanger = '<h1 class=" mui-badge-warning text-h2">'
+//				spanend = '</h1>';
+//				keyNames = keyNames.reverse();var n = 0;
+//				keyNames.forEach(function(item){
+//					if(n%2 == 0){
+//						timehtml = spanheadsucess + (n+1) + '&nbsp;&nbsp;' + item + spanend + timehtml;
+//					}else{
+//						timehtml = spanheaddanger + (n+1) + '&nbsp;&nbsp;' + item +spanend + timehtml;
+//					}
+//					n++;
+//				});
+//				mui("#h-todayshow")[0].innerHTML = timehtml;
+				
+				//----------------------------------按钮------------------------------
+//				btnhtml = '<div class="mui-col-xs-12"><button id="h-register" type="button" class="mui-btn mui-btn-success mui-btn-block ">签到</button>	</div>'
+//				if(keyNames.length%2 != 0){
+//					btnhtml = '<div class="mui-col-xs-12"><button id="h-register" type="button" class="mui-btn mui-btn-warning mui-btn-block ">签退</button>	</div>'
+//				}
+//				
+//				mui("#h-registerdiv")[0].innerHTML = btnhtml;
+//				
+//				var btnregister = document.getElementById("h-register");
+//				//监听点击事件
+//				btnregister.addEventListener("tap",function () {
+//					 var today = new Date();
+//					 var key = String(today.getTime());
+//				     plus.storage.setItem(key,'1');
+//				     mui.alert("成功: "+showTime(today));
+//				     var webmain = plus.webview.currentWebview();
+//				     webmain.reload();
+//				});
+				//触发submit按钮的点击事件
+//				mui.trigger(btnregister,'tap');
+			});
+			
+			 //主列表点击事件
+			mui('#list').on('tap', 'a', function() {
+				var id = this.getAttribute('href');
+				var href = this.href;
+				var type = this.getAttribute("open-type");
+				//不使用父子模板方案的页面
+				if (type == "common") {
+					var webview_style = {
+						popGesture: "close"
+					};
+					//侧滑菜单需动态控制一下zindex值；
+					if (~id.indexOf('offcanvas-')) {
+						webview_style.zindex = 9998;
+						webview_style.popGesture = ~id.indexOf('offcanvas-with-right') ? "close" : "none";
+					}
+					//图标界面需要启动硬件加速
+					if(~id.indexOf('icons.html')){
+						webview_style.hardwareAccelerated = true;
+					}
+					mui.openWindow({
+						id: id,
+						url: this.href,
+						styles: webview_style,
+						show: {
+							aniShow: aniShow
+						},
+						waiting: {
+							autoShow: false
+						}
+					});
+				} else if (id && ~id.indexOf('.html')) {
+					if (!mui.os.plus || (!~id.indexOf('popovers.html')&&mui.os.ios)) {
+						mui.openWindow({
+							id: id,
+							url: this.href,
+							styles: {
+								popGesture: 'close'
+							},
+							show: {
+								aniShow: aniShow
+							},
+							waiting: {
+								autoShow: false
+							}
+						});
+					} else {
+						//TODO  by chb 当初这么设计，是为了一个App中有多个模板，目前仅有一个模板的情况下，实际上无需这么复杂
+						//使用父子模板方案打开的页面
+						//获得共用模板组
+						var template = getTemplate('default');
+						//判断是否显示右上角menu图标；
+						var showMenu = ~href.indexOf('popovers.html') ? true : false;
+						//获得共用父模板
+						var headerWebview = template.header;
+						//获得共用子webview
+						var contentWebview = template.content;
+						var title = this.innerText.trim();
+						//通知模板修改标题，并显示隐藏右上角图标；
+						mui.fire(headerWebview, 'updateHeader', {
+							title: title,
+							showMenu: showMenu,
+							target:href,
+							aniShow: aniShow
+						});
+						
+						if(mui.os.ios||(mui.os.android&&parseFloat(mui.os.version)<4.4)){
+							var reload = true;
+							if (!template.loaded) {
+								if (contentWebview.getURL() != this.href) {
+									contentWebview.loadURL(this.href);
+								} else {
+									reload = false;
+								}
+							} else {
+								reload = false;
+							}
+							(!reload) && contentWebview.show();
+							
+							headerWebview.show(aniShow, 150);
+						}
+					}
+				}
+			});
+			var index = null; //主页面
+			function openMenu() {
+				!index && (index = mui.currentWebview.parent());
+				mui.fire(index, "menu:open");
+			}
+			//在android4.4.2中的swipe事件，需要preventDefault一下，否则触发不正常
+			window.addEventListener('dragstart', function(e) {
+				mui.gestures.touch.lockDirection = true; //锁定方向
+				mui.gestures.touch.startDirection = e.detail.direction;
+			});
+			window.addEventListener('dragright', function(e) {
+				if (!mui.isScrolling) {
+					e.detail.gesture.preventDefault();
+				}
+			});
+			 //监听右滑事件，若侧滑菜单未显示，右滑要显示菜单；
+			window.addEventListener("swiperight", function(e) {
+				//默认滑动角度在-45度到45度之间，都会触发右滑菜单，为避免误操作，可自定义限制滑动角度；
+				if (Math.abs(e.detail.angle) < 4) {
+					openMenu();
+				}
+			});
+			
+			function showTime(objD)  {  
+			    var str='';  
+			    var yy = objD.getYear();  
+			    if(yy<1900) yy = yy+1900;  
+			    var MM = objD.getMonth()+1;  
+			    if(MM<10) MM = '0' + MM;  
+			    var dd = objD.getDate();  
+			    if(dd<10) dd = '0' + dd;  
+			    var hh = objD.getHours();  
+			    if(hh<10) hh = '0' + hh;  
+			    var mm = objD.getMinutes();  
+			    if(mm<10) mm = '0' + mm;  
+			    var ss = objD.getSeconds();  
+			    if(ss<10) ss = '0' + ss;  
+			    var ww = objD.getDay();  
+			    if  (ww==0)  ww="星期日";  
+			    if  (ww==1)  ww="星期一";  
+			    if  (ww==2)  ww="星期二";  
+			    if  (ww==3)  ww="星期三";  
+			    if  (ww==4)  ww="星期四";  
+			    if  (ww==5)  ww="星期五";  
+			    if  (ww==6)  ww="星期六";  
+			    str = yy + "-" + MM + "-" + dd + " " + hh + ":" + mm + ":" + ss + "  " + ww ;  
+			    return(str);  
+			};
+			
+			function tick(){
+				var today;
+			    today = new Date();
+			    mui("#h-datetime")[0].innerHTML = showTime(today);
+			    window.setTimeout("tick()", 1000);
+			};
+			tick();
+			
+			var mainfooter = mui("#main-footer");
+			var divelement = mui("#main-margin");
+			divelement[0].style.height = mainfooter[0].offsetHeight+"px";
+			
+		</script>
+	</body>
+
+</html>
